@@ -1,9 +1,12 @@
 # General settings
 OBJ =NGC7635_Bubble
 
+# Channel stretch settings
+STRETCH=-autoScale 2.0 -scaleBlack 3.0
+
 # Example for Hubble palette
 CHAN=S2HaO3
-COMBINE=-chroma 1.1 -rotFrom 120 -rotTo 147.5 -rotBy -35 -scnr 0.5 -autoScale 0.5 -ppGamma 2.7 -scaleBlack 7.84
+COMBINE=-chromaGamma 1.4 -rotFrom 120 -rotTo 147.5 -rotBy -35 -scnr 0.5 -ppGamma 2.7 
 
 # Provide paths to your master dark frames here (they depend on exposure length, temperature, gain and bias)
 DARKL =calib/dark_L.fits
@@ -38,7 +41,6 @@ STD    =
 # Set the path to your nightlight executable here
 NL     =nightlight
 
-
 # Makefile targets and rules. These should usually not require any changes
 
 all: $(OBJ)_$(CHAN).fits
@@ -55,7 +57,11 @@ realclean: clean
 	rm -f $(OBJ)_L.fits $(OBJ)_R.fits $(OBJ)_G.fits $(OBJ)_B.fits \
 	$(OBJ)_Ha.fits $(OBJ)_O3.fits $(OBJ)_S2.fits \
 	$(OBJ)_L.log $(OBJ)_R.log $(OBJ)_G.log $(OBJ)_B.log \
-	$(OBJ)_Ha.log $(OBJ)_O3.log $(OBJ)_S2.log 
+	$(OBJ)_Ha.log $(OBJ)_O3.log $(OBJ)_S2.log \
+	rm -f $(OBJ)_L_stretch.fits $(OBJ)_R_stretch.fits $(OBJ)_G_stretch.fits $(OBJ)_B_stretch.fits \
+	$(OBJ)_Ha_stretch.fits $(OBJ)_O3_stretch.fits $(OBJ)_S2_stretch.fits \
+	$(OBJ)_L_stretch.log $(OBJ)_R_stretch.log $(OBJ)_G_stretch.log $(OBJ)_B_stretch.log \
+	$(OBJ)_Ha_stretch.log $(OBJ)_O3_stretch.log $(OBJ)_S2_stretch.log 
 
 folders:
 	for f in *_L_*.fits; do if test -f "$$f";  then mkdir -p L;  mv *_L_*.fits  L/;  fi; break; done
@@ -72,32 +78,38 @@ count:
 %.stats: %.fits 
 	$(NL) $(STD) $(STATS) -log $@ stats $^
 
-%_S2HaO3.fits: %_S2.fits %_Ha.fits %_O3.fits
+%_S2HaO3.fits: %_S2_stretch.fits %_Ha_stretch.fits %_O3_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^
 
-%_HaS2O3.fits: %_Ha.fits %_S2.fits %_O3.fits
+%_HaS2O3.fits: %_Ha_stretch.fits %_S2_stretch.fits %_O3_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^
 
-%_HaO3S2.fits: %_Ha.fits %_O3.fits %_S2.fits 
+%_HaO3S2.fits: %_Ha_stretch.fits %_O3_stretch.fits %_S2_stretch.fits 
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^
 
-%_HaO3O3.fits: %_Ha.fits %_O3.fits
+%_HaO3O3.fits: %_Ha_stretch.fits %_O3_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^ $*_O3.fits
 
-%_HaS2S2.fits: %_Ha.fits %_S2.fits
+%_HaS2S2.fits: %_Ha_stretch.fits %_S2_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^ $*_S2.fits
 
-%_RGB.fits: %_R.fits %_G.fits %_B.fits
+%_RGB.fits: %_R_stretch.fits %_G_stretch.fits %_B_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ rgb $^
 
-%_aRGB.fits: %_L.fits %_R.fits %_G.fits %_B.fits
+%_aRGB.fits: %_L_stretch.fits %_R_stretch.fits %_G_stretch.fits %_B_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ argb $^
 
-%_LRGB.fits: %_L.fits %_R.fits %_G.fits %_B.fits
+%_LRGB.fits: %_L_stretch.fits %_R_stretch.fits %_G_stretch.fits %_B_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ lrgb $^
 
-%_HaRGB.fits: %_Ha.fits %_R.fits %_G.fits %_B.fits
+%_HaRGB.fits: %_Ha_stretch.fits %_R_stretch.fits %_G_stretch.fits %_B_stretch.fits
 	$(NL) $(STD) $(COMBINE) -out $@ lrgb $^
+
+%_stretch.fits: %.fits
+	$(NL) $(STD) $(STRETCH) -out $@ stretch $^
+
+# Don't delete intermediate FITS files from stretching
+.PRECIOUS: %_stretch.fits
 
 $(OBJ)_L.fits: L/*.fits 
 	$(NL) $(STD) $(PARAML) -dark $(DARKL) -flat $(FLATL) -out $@ stack "L/*.fits"
@@ -119,3 +131,4 @@ $(OBJ)_O3.fits: O3/*.fits
 
 $(OBJ)_S2.fits: S2/*.fits 
 	$(NL) $(STD) $(PARAMS2) -dark $(DARKS2) -flat $(FLATS2) -out $@ stack "S2/*.fits"
+
